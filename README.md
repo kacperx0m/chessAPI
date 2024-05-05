@@ -13,3 +13,5 @@ Każda odpowiedź serwera zwraca odpowiedni response code:
 - 409 w przypadku złego pola
 - 404 jeśli odpytamy o nieistniejącą figurę
 - 500 w przypadku błędu serwera
+
+Plansza na starcie jest ustalona w pozycji początkowej do rozpoczęcia gry standardowej

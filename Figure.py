@@ -4,37 +4,37 @@ class Figure:
         self.color = color
 
     """
-    zwraca liste dostepnych ruchow dla figury w oparciu o aktualna pozycje 
+    zwraca liste dostepnych ruchow dla figury w oparciu o aktualna pozycje
     np ['a3']
     nie uwzglednia sekwencji bicia
     """
 
-    def list_available_moves(self):
+    def list_available_moves(self, board):
         availableMoves = []
         start_col = ord(self.currentField[0]) - ord("a")
-        start_row = int(self.currentField[1]) - 1
-        for i in range(1, 8 if self.longMove else 2):
-            for move in self.moves:
+        start_row = int(self.currentField[1])
+        # move (x,y)
+        for move in self.moves:
+            for i in range(1, 8 if self.longMove else 2):
                 new_col = start_col + move[0] * i
                 new_row = start_row + move[1] * i
-                if 0 <= new_col < 8 and 0 <= new_row < 8:
-                    availableMoves.append(
-                        f'{chr(new_col + ord("a"))}{new_row + 1}')
+                transformed = chr(new_col + ord("a")) + str(new_row)
+                if 0 <= new_col < 8 and 0 < new_row <= 8:
+                    if board.get(transformed) is not None:
+                        break
+                    availableMoves.append(f"{transformed}")
         return availableMoves
 
     """
     zwraca True albo False w zaleznosci od tego czy ruch moze byc wykonany
-    bazuje na tym czy pole jest puste (None) i czy ruch znajduje sie w liscie ruchow
+    bazuje na tym czy pole jest puste (None) i czy ruch znajduje sie w
+    liscie ruchow
     """
 
     def validate_move(self, dest_field, board):
-        temp1 = ord(dest_field[0]) - ord("a")
-        temp2 = int(dest_field[1])
-        moves = self.list_available_moves()
-        if (
-            board[temp2 - 1][temp1] is None
-            and f"{dest_field[0]}{dest_field[1]}" in moves
-        ):
+        moves = self.list_available_moves(board)
+        if board.get(dest_field) is None \
+                and f"{dest_field[0]}{dest_field[1]}" in moves:
             return True
         return False
 
@@ -66,13 +66,9 @@ class King(Figure):
                 self.moves.append((-2, 0))
 
     def validate_move(self, dest_field, board):
-        temp1 = ord(dest_field[0]) - ord("a")
-        temp2 = int(dest_field[1])
-        moves = self.list_available_moves()
-        if (
-            board[temp2 - 1][temp1] is None
-            and f"{dest_field[0]}{dest_field[1]}" in moves
-        ):
+        moves = self.list_available_moves(board)
+        if board.get(dest_field) is None \
+                and f"{dest_field[0]}{dest_field[1]}" in moves:
             # zakladamy ze walidacja zakonczona sukcesem = ruch
             if self.castling is True:
                 self.moves.pop()
@@ -152,13 +148,9 @@ class Pawn(Figure):
     """
 
     def validate_move(self, dest_field, board):
-        temp1 = ord(dest_field[0]) - ord("a")
-        temp2 = int(dest_field[1])
-        moves = self.list_available_moves()
-        if (
-            board[temp2 - 1][temp1] is None
-            and f"{dest_field[0]}{dest_field[1]}" in moves
-        ):
+        moves = self.list_available_moves(board)
+        if board.get(dest_field) is None \
+                and f"{dest_field[0]}{dest_field[1]}" in moves:
             # zakladamy ze walidacja zakonczona sukcesem = ruch
             if self.firstMove is True:
                 self.moves.pop()
@@ -173,8 +165,35 @@ class Chessboard:
     posiada funkcje do generowania oraz wyswietlania planszy
     """
 
-    def __init__(self):
+    def __init__(self, arrangement=None):
         self.board = [[None for _ in range(8)] for _ in range(8)]
+        # plansza 8x8
+        # biale na dole (wyzsze indeksy) czarne na gorze (mniejsze indeksy)
+        if arrangement is None:
+            self.arrangement = """
+                rkbqKbkr
+                pppppppp
+                nnnnnnnn
+                nnnnnnnn
+                nnnnnnnn
+                nnnnnnnn
+                pppppppp
+                rkbqKbkr
+                """
+        elif arrangement == "clear":
+            self.arrangement = """
+                            nnnnnnnn
+                            nnnnnnnn
+                            nnnnnnnn
+                            nnnnnnnn
+                            nnnnnnnn
+                            nnnnnnnn
+                            nnnnnnnn
+                            nnnnnnnn
+                            """
+        else:
+            self.arrangement = arrangement
+        self.setChessboard()
 
     def setChessboard(self):
         # litery reprezentujace poszczegolne klasy figur
@@ -188,40 +207,30 @@ class Chessboard:
             "n": None,
         }
 
-        # plansza 8x8
-        # biale na dole (wyzsze indeksy) czarne na gorze (mniejsze indeksy)
-        arrangement = """
-            rkbqKbkr
-            pppppppp
-            nnnnnnnn
-            nnnnnnnn
-            nnnnnnnn
-            nnnnnnnn
-            pppppppp
-            rkbqKbkr
-            """
-
+        # iteruje po arrangement i ustawia figury na planszy
         i = 0
-        for line in arrangement.strip().split("\n"):
+        for line in self.arrangement.strip().split("\n"):
             line = line.strip()
             for j, char in enumerate(line):
                 piece = figureDict[char]
                 if piece is not None:
-                    self.board[i][j] = piece(
-                        f'{chr(j+ord("a"))}{i+1}',
-                        "white" if 0 <= i < 2 else "black"
+                    self.board[7 - i][j] = piece(
+                        f'{chr(j+ord("a"))}{8-i}',
+                        "black" if 0 <= i < 2 else "white"
                     )
                 else:
                     continue
             i += 1
 
+    # przyjmuje figure np Pawn(...) i ustawia figure pod tym polem
     def set(self, piece):
-        col = ord(piece.currentField[0]) - ord('a')
+        col = ord(piece.currentField[0]) - ord("a")
         row = int(piece.currentField[1]) - 1
         self.board[row][col] = piece
 
+    # przyjmuje pole o wartosci string np "b1" i zwraca figure pod tym polem
     def get(self, currentField):
-        col = ord(currentField[0]) - ord('a')
+        col = ord(currentField[0]) - ord("a")
         row = int(currentField[1]) - 1
         return self.board[row][col]
 
@@ -235,24 +244,38 @@ class Chessboard:
             print(" | ".join(str(piece) if piece else "None" for piece in row))
 
 
-"""
-proste testy nie licząc oddzielego pliku do testów
+# """
+# proste testy nie licząc oddzielego pliku do testów
 
-chessboard = Chessboard()
+chessboard = Chessboard(
+    arrangement="""
+    nnnnqnnn
+    nbnnnnKp
+    nnnnnppn
+    nprqnknn
+    pnnnnnnn
+    nnnpnppn
+    pnnknnnp
+    nrnnrnKn
+    """
+)
 # chessboard.setChessboard()
 # chessboard.printChessboardObjects()
 # pawn = Pawn("e7", "black")
 # chessboard.board[6][4] = pawn
 # pawn2 = Pawn("e2", "white")
 # chessboard.set(pawn2)
-knight1 = Knight("d4", "white")
-knight2 = Knight("f3", "white")
-chessboard.set(knight1)
-chessboard.set(knight2)
+# knight1 = Knight("d4", "white")
+# knight2 = Knight("f3", "white")
+# chessboard.set(knight1)
+# chessboard.set(knight2)
+# chessboard.printChessboard()
+# chessboard.set(Rook("c6", "white"))
+piece = chessboard.get("b7")
 chessboard.printChessboard()
-# piece = chessboard.board[6][4]  # pole e1
-# print(piece.list_available_moves())
-print(knight2.validate_move("d4", chessboard.board))
+temp = piece.list_available_moves(chessboard)
+print(piece.list_available_moves(chessboard))
+print(piece.validate_move("e6", chessboard))
 # print(piece.validate_move("g1", chessboard.board))
 
-"""
+# """

@@ -6,6 +6,7 @@ chessboard = Chessboard()
 chessboard.setChessboard()
 figures = ("pawn", "rook", "knight", "bishop", "queen", "king")
 
+
 @app.errorhandler(500)
 def internal_error(error):
     return make_response("Server Error", 500)
@@ -62,7 +63,7 @@ def figure_moves(chess_figure, current_field):
 
         return jsonify(
             {
-                "availableMoves": figure.list_available_moves(),
+                "availableMoves": figure.list_available_moves(chessboard),
                 "error": "None",
                 "currentField": current_field,
             }
@@ -102,12 +103,15 @@ def figure_validate_move(chess_figure, current_field, dest_field):
             }
         )
     else:
-        return jsonify(
-            {
-                "move": "invalid",
-                "figure": chess_figure,
-                "error": "Current move is not permitted",
-                "current_field": current_field,
-                "destField": dest_field,
-            }
+        return make_response(
+            jsonify(
+                {
+                    "move": "invalid",
+                    "figure": chess_figure,
+                    "error": "Current move is not permitted",
+                    "current_field": current_field,
+                    "destField": dest_field,
+                }
+            ),
+            409,
         )
